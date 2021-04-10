@@ -21,7 +21,7 @@ function captivechrissymarieSearch($title, $aka=null)
 //print_r(htmlspecialchars($resp['data']));
 	$response = $resp['data'];
 
-	preg_match_all('/href="\/x-new\/new-set\.php\?setid=(\d+)&user=.*"[^%]*<h3>(.*)</i', $response, $matches, PREG_SET_ORDER);
+	preg_match_all('/href="\/x-new\/new-set\.php\?setid=(\d+)&user=.*"[^%]*?<h3>([^<]*)</i', $response, $matches, PREG_SET_ORDER);
 	foreach($matches as $match) {
 			$info           = array();
 			$info['id']     = $captivechrissymariePrefix.$match[1];
