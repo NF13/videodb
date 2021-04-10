@@ -144,20 +144,19 @@ function _replace_enclosed_tag_traced($matches)
     $engine = (preg_match('/(imdb|amazon|filmweb)/i', $uri['host'], $m)) ? $m[1] : '';
     
     if ($engine == 'imdb')
-	{
-		// imdb
-		// fix for IMDB speciality: 2nd href inside first one
-		if (preg_match("/http.*?http/i", $url)) 
-		{
-			return implode('', array_slice($matches,1));
-		}
+    {
+        // imdb
+        // fix for IMDB speciality: 2nd href inside first one
+        if (preg_match("/http.*?http/i", $url)) 
+        {
+            return implode('', array_slice($matches,1));
+        }
 
         // title link?
-		// either /Title?0328828	(old-style or tiger-redirect)
-		// or /title/tt0306734/	(new-style)
+        // either /Title?0328828	(old-style or tiger-redirect)
+        // or /title/tt0306734/	(new-style)
         if (preg_match("#/[Tt]itle(\?|/tt)(\d+)/?(\?|$)#", $url, $m) && $title)
         {
-        
             // don't link images to avoid matching the imdb page flicker
             if (!preg_match("/<img\s+/i", $matches[4]))
             {
@@ -172,7 +171,30 @@ function _replace_enclosed_tag_traced($matches)
                 }
             }
         }
-	}
+        // amend url for seasons/year the path for previous and next season/year url's at bottom of eposides page
+        if (preg_match("#(=(.*?)\&ref_=ttep_ep_sn_(pv|nx))|(=(.*?)\&ref_=ttep_ep_yr_(pv|nx))#",$matches[2],$mymatches))
+        {    
+//          echo "<BR> in matches"; var_dump($matches);
+//          echo "mymatches 1"; var_dump($mymatches);     
+//          echo '<BR> $url - '.$url;
+            if (!preg_match('#(\/episodes\/\?season=)|(\/episodes\/\?year=)#',$url,$mymatches))
+            {
+//              echo "<BR> mymatches 2"; var_dump($mymatches);
+                $patterns = array ('#(\?season)#','#(\?year)#');
+                $replacements = array('episodes?season','episodes?year');
+                $url = preg_replace($patterns,$replacements,$url);
+//              echo '<BR> $url after - '.$url;
+            }
+                // remove _ajax in url will be added by js. 
+           if (preg_match('#\/episodes\/_ajax\/#',$url,$mymatches))
+            {
+//              echo "<BR> mymatches 3"; var_dump($mymatches);
+                $url = preg_replace('#\/episodes\/_ajax#','',$url);
+//              echo '<BR> $url after ajax - '.$url;
+            }
+//          echo '<BR> $url - end '.$url;
+        }
+    }
     elseif ($engine == 'amazon')
 	{
 		// amazon
@@ -283,6 +305,8 @@ function fixup_HTML($html)
 	$html = preg_replace_callback("/(<(ima?ge?|frame|iframe|script)\s+[^>]*?src\s*=\s*(\"|'))([^>]*?)(\\3.*?>)/is", '_replace_tag', $html);
 	$html = preg_replace_callback("/(<(ima?ge?|frame|iframe|script)\s+[^>]*?src\s*=\s*([^\"']))([\d\w\.\/\+\%-:=&_]+?)(\s*[^>]*?>)/is", '_replace_tag', $html);
 	// form  
+        //<input type="hidden" name="ref_" value="nv_sr_sm"/>
+        $html = preg_replace_callback('#<input type="hidden" name="ref_" value="nv_sr_sm"/>#', '_remove_tag', $html);        
 	$html = preg_replace_callback("/(<(form)\s+[^>]*?action\s*=\s*(\"|'))([^>]*?)(\\3[^>]*?>)/is", '_replace_tag', $html);
 	$html = preg_replace_callback("/(<(form)\s+[^>]*?action\s*=\s*([^\"']))([\d\w\.\/\+\%-:=&_]+?)(\s*[^>]*?>)/is", '_replace_tag', $html);
 	// href
@@ -319,7 +343,9 @@ function request($urlonly=false)
 			case session_name():
 			case 'videodbreload':
 			case 'iframe':
-				break;				
+				break;
+//                        case 'q':	
+//                            $url = 'http://www.imdb.com/find';  // quick fix for search 
 			default:
 				if ($request) $request .= "&";
 				$request .= "$key=$value";
@@ -380,72 +406,131 @@ function fixup_javascript($html)
     {
         return $html;
     }
-    // find all imdb javascript files
-    preg_match_all('#https:\/\/m.media-amazon.com\/images\/G\/01\/imdb\/js\/collections\/(.*?)-(.*?)js#',
+    // find imdb javascript files
+                //  https://m.media-amazon.com/images/S/sash/CuDG6GJyHNsYYMC.js
+    preg_match_all('#https:\/\/m.media-amazon.com\/images\/S\/sash\/(.*?).js#',
                    $html,
                    $matches_all);
-//    echo "<br> test for switch - ";
-//    var_dump($matches_all);  
-//    var_dump($matches_all[1]);
+//    echo "<br> test for switch code - "; var_dump($matches_all); var_dump($matches_all[1]);
     $x = 0;
-    foreach ($matches_all[1] as $js_page_type)
+    foreach ($matches_all[0] as $js_file)
     {
-//    echo "<br> in for each loop - ".$js_page_type;
-        switch ($js_page_type)
+        $js_file_data = file_get_contents($js_file);
+        // for season, year change drop down list on episode list
+        // string - if(d!==c){var e="/title/"
+        $pattern = '#(if\(d!==c\){var e=)(\"\/title\/\")#';
+        if (preg_match($pattern, $js_file_data, $matches)  )
         {
-            case "pagelayout":
-            case "title":
-            case "name":
-            case "consumersite";
-                $html = replace_javascript ($html,$js_page_type,$matches_all[0][$x]);
-                break;
+        //          replace_javascript ($html, $js_page_type, $js_file_name)
+            $html = replace_javascript ($html,$matches_all[1][$x],$matches_all[0][$x]);
         }
+        $x++ ;
+    }
+    // for search bar and interactive search list
+    // find all js file named  
+    //               https://m.media-amazon.com/images/I/?file-name?.js
+    preg_match_all('#https:\/\/m.media-amazon.com\/images\/I\/(.*?).js#',
+                   $html,
+                   $matches_all);
+//echo "<br> test for switch - "; var_dump($matches_all);
+    $x = 0;
+    foreach ($matches_all[0] as $js_file_name)
+    {
+        $js_file_data = file_get_contents($js_file_name);
+                //   hiddenFields:[{name:"ref_",val:"nv_sr_sm"}]
+        $pattern = '#hiddenFields:\[\{name:"ref_",val:"nv_sr_sm"\}\]#';
+        if (preg_match($pattern, $js_file_data, $matches)  )
+        {
+//echo 'in if statement'; var_dump($js_file_name);var_dump($matches); var_dump($matches_all[1][$x]);
+            $js_full_file_path = $matches_all[0][$x];
+            $js_file_name = $matches_all[1][$x];
+            $html = replace_javascript_search ($html,$js_full_file_path,$js_file_name,$js_file_data); 
+            break;
+        }
+//echo "<br> test for search code - "; var_dump($js_file_name);var_dump($matches);
         $x++ ;
     }
     return ($html);
 }
 
+function replace_javascript_search ($html,$js_full_file_path,$js_file_name,$js_file_data)
+{
+     global $iframe;
+    $url = getScheme().'://'.$_SERVER['HTTP_HOST'].$_SERVER['PHP_SELF'];
+    // get cache folder
+    $cachefolder = cache_get_folder('javascript');  //get cache root folder
+    $error = cache_create_folders($cachefolder, 0); // ensure folder exists
+    $file_path = './'.$cachefolder.'imdb-clone-'.'search-override'.'.js';
+    
+    // look for   search:{searchEndpoint:"https://v2.sg.media-imdb.com/suggestion",queryTemplate:"%s%s/%s.json",formAction:"/find",formMethod:"get",inputName:"q",hiddenFields:[{name:"ref_",val:"nv_sr_sm"}]},
+    $pattern = '#(search:\{searchEndpoint:")(.*?)(",queryTemplate:")(.*?)((".*?formAction:")(.*?)(".*?hiddenFields:\[))(.*?\]\},)#';
+    preg_match($pattern, $js_file_data, $matches);
+//echo "<br> search js matches - "; var_dump($matches); var_dump($url);
+    if ($iframe) $iframe_val = '{name:"iframe",val:"'.$iframe.'"},';
+    $replace_val = $matches[1].$url.$matches[3].'?videodburl='.$matches[2]."/".$matches[4].$matches[5].'{name:"videodburl",val:"http://www.imdb.com'.$matches[7].'"},'.$iframe_val.$matches[9];
+//echo "<br> search replace val - "; var_dump($replace_val);
+    $js_file_data = preg_replace($pattern,$replace_val, $js_file_data);
+
+    //"search-result--const",href:e.url} and "search-result--video",href:e.url} and "search-result--link",href:e.url}
+    $pattern = '#(",href:)(e\.url\})#';
+    preg_match($pattern, $js_file_data, $matches);
+//echo "<br> interactive search js matches - "; var_dump($matches);
+    $iframe_val = '';
+    if ($iframe) $iframe_val = "&iframe=".$iframe;    
+    $replace_val = $matches[1].'"'.$url.'?'.$iframe_val.'&videodburl=https://www.imdb.com"'.'+'.$matches[2];
+//echo var_dump($replace_val);
+    $js_file_data = preg_replace($pattern,$replace_val, $js_file_data);            
+    // save file to cache (overwritten if present)
+    //add comment line to file
+    $comment = '/* this file original name - '.$js_full_file_path.' */';
+    file_put_contents($file_path, $comment);
+    // save js data file to cache (overwritten if present) 
+    file_put_contents($file_path, $js_file_data, FILE_APPEND);
+    
+                // https://m.media-amazon.com/images/I/????.js - using generic file name
+    $pattern  = '#https:\/\/m.media-amazon.com\/images\/I\/'.$js_file_name.'.js#';
+    $html = preg_replace($pattern,$file_path,$html);
+
+    return $html;
+}
 function replace_javascript ($html, $js_page_type, $js_file_name)
 {
     global $iframe;
     
+//    echo "<br> in replace_javascript";
     // allow for iframe templates
-    $is_iframe = '';
-    if ($iframe) $is_iframe = '&iframe=2';
+    if ($iframe) $iframe_val = "&iframe=".$iframe;
+    
+    // get cache folder
+    $cachefolder = cache_get_folder('javascript');  //get cache root folder
+    $error = cache_create_folders($cachefolder, 0); // ensure folder exists
+    $file_path = './'.$cachefolder.'imdb-clone-'.$js_page_type.'.js';
     
     // get contents of javascript file
     $js_file_data = file_get_contents($js_file_name);
     
-    // process string - var c='<a href="'+a.url+"?ref_="+b+'" class="poster"';
-    $pattern = '/(var c=\'<a href=\"\'\+)(a\.url\+\"\?ref_=\"\+b\+)(\'\" class=\"poster"\')/';
+    // for season, year change drop down list on episode list
+    //  process - if(d!==c){var e="/title/"
+    $pattern = '#(if\(d!==c\){var e=)(\"\/title\/\")#';
     preg_match($pattern, $js_file_data, $matches);
-//    echo "<br> list of imdb js files - ";
-//    var_dump($matches);
+//    echo "<br> js file - find for season"; var_dump($matches);
     $js_file_data = preg_replace($pattern,
-                                 $matches[1].'"trace.php?videodburl=http://www.imdb.com"+'.$matches[2].'"'.$is_iframe.'"+'.$matches[3],
+                                 $matches[1].'"trace.php?'.$iframe_val.'&videodburl=https://www.imdb.com"+'.$matches[2],
                                  $js_file_data);
 
-    // process string - class="moreResults" href="',g+=h+"/find?s=all&q="+A+"&ref_="+k+'sr_sm">',  
-    $pattern = '#(class=\"moreResults\" href=\")(\',g\+=h\+\"/find\?s=all&q=\"\+A\+\"&ref_=\"\+k\+\'sr_sm)(\">\',)#';
-    preg_match($pattern, $js_file_data, $matches);
-//    echo "<br> js file - find moreresults";
-//    var_dump($matches);
-    $js_file_data = preg_replace($pattern,
-                                 $matches[1].'trace.php?videodburl=http://www.imdb.com'.$matches[2].$is_iframe.$matches[3],
-                                 $js_file_data);
+    $comment = '/* this file original name - '.$js_file_name.' */';
+    file_put_contents($file_path, $comment);
+    // save js data file to cache (overwritten if present) 
+    file_put_contents($file_path, $js_file_data, FILE_APPEND);
+    
+    //           https://m.media-amazon.com/images/S/sash/CuDG6GJyHNsYYMC.js
+    $pattern = '#'.$js_file_name.'#';
+//    $pattern = '#https:\/\/m.media-amazon.com\/images\/S\/sash\/'.$js_page_type.'.js#';
+    $html = preg_replace($pattern,$file_path,$html);
+    
 
-    // save file to cache (overwritten if present) 
-    $cachefolder = cache_get_folder('');  //get cache root folder
-    $error = cache_create_folders($cachefolder.'javascript', $levels = 0); // ensure folder exists
-    $file_path = './'.$cachefolder.'javascript/'.'imdb-clone-'.$js_page_type.'.js';
-    file_put_contents($file_path, $js_file_data);
-    // https://m.media-amazon.com/images/G/01/imdb/js/collections/pagelayout-217123936._CB476660927_.js 
-    $pattern  = '#https:\/\/m.media-amazon.com\/images\/G\/01\/imdb\/js\/collections\/'.$js_page_type.'-(.*?)js#';
-//    echo "<BR> - pattern-".$pattern;
-    if (preg_match($pattern, $html, $matches))
-    {        
-        $html = preg_replace($pattern,$file_path,$html);
-    }    
+//  echo "<BR> - pattern-".$pattern;
+    $html = preg_replace($pattern,$file_path,$html);
 
     return $html;
 }
@@ -477,23 +562,32 @@ else
     // fetch URL
     $fetchtime = time();
     $page = request();
+    //testing code page from call to imdb
+    $file_path = './cache/pagedata-from imdb.html';
+    file_put_contents($file_path, $page);
     $fetchtime = time() - $fetchtime;
 
 	// convert HTML for output
-	$page = fixup_HTML($page);
+    $page = fixup_HTML($page);
     $page = fixup_javascript($page);
 }
 
-if ($iframe == 2) 
+if ($iframe == 2 || preg_match('#\/_ajax#', $videodburl, $matches) || preg_match('#\.json#', $videodburl, $matches))
 {
 	// mode 2: display data into iframe
+        // ajax call: dissplay data from imdb (no head)
+        //testing code save page before send to browser
+        //$file_path = './cache/pagedataframe.txt';
+        // file_put_contents($file_path, $page);
 	echo($page);
 	exit();
 }
 
 // mode 0 or 1: prepare templates
 tpl_page('imdbbrowser');
-
+    //testing code save page before send to browser
+    //$file_path = './cache/pagedata.html';
+    //file_put_contents($file_path, $page);
 $smarty->assign('url', $url);
 $smarty->assign('page', $page);
 $smarty->assign('fetchtime', $fetchtime);
