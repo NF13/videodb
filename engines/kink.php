@@ -29,7 +29,7 @@ function kinkActor($name, $actorid)
 	$resp = httpClient('https://www.kink.com/model/'.$actorid.'/tst', $cache);     // added trailing / to avoid redirect
     if (!$resp['success']) $CLIENTERROR .= $resp['error']."\n";
 	
-	preg_match('/https:\/\/content\.kink\.com\/imagedb\/[^"]*/i', $resp['data'], $matches);
+	preg_match('/https:\/\/cdnp\.kink\.com\/imagedb\/[^"]*/i', $resp['data'], $matches);
 	
 	$url = $matches[0];
 
@@ -70,21 +70,21 @@ function kinkData($kinkId)
 	preg_match('/data-sitename="([^"]*)"/i', $response, $matches);
 	$data['director'] = $matches[1];
 	
-	preg_match('/date: .*?, (.*)/i', $response, $matches);
+	preg_match('/class="shoot-date".*>.*, (\d*)/i', $response, $matches);
 	$data['year'] = $matches[1];
 	
 	preg_match('/class="shoot-title".*>([^<]*)/i', $response, $matches);
 	$data['title'] = $matches[1];
 	
-	preg_match('/class="description">\n([^<]+)/i', $response, $matches);
+	preg_match('/class="description-text".*><p>(.*)<\/p>/i', $response, $matches);
 	$data['plot'] = $matches[1];
 	
 	
-	preg_match('/<span.*class="names".*>[^<]*(.*)/i', $response, $matches);
+	preg_match('/<span.*class="names.*?".*?>[^<]*(.*)/i', $response, $matches);
 	$casthtml = $matches[1];
-	preg_match_all('/\/model\/(\d+)[^>]*>([^<]*)/i', $casthtml, $matches, PREG_SET_ORDER);
+	preg_match_all('/\/model\/(\d+)[^>]*>([^<^,]*)/i', $casthtml, $matches, PREG_SET_ORDER);
 	foreach($matches as $match) {
-		$cast .= $match[2].'::::kink:'.$match[1]."\n";
+		$cast .= trim($match[2]).'::::kink:'.$match[1]."\n";
 	}
 	$data['cast'] = $cast;
 	
