@@ -12,7 +12,7 @@ function shochaData($shochaId)
     $shochaId = preg_replace('/^'.$shochaPrefix.'/', '', $shochaId);
     $data= array();
 
-	$resp = httpClient('http://www.shockchallenge.com/'.$shochaId, $cache);     // added trailing / to avoid redirect
+	$resp = httpClient('https://www.shockchallenge.com/'.$shochaId, $cache);     // added trailing / to avoid redirect
     if (!$resp['success']) $CLIENTERROR .= $resp['error']."\n";
 	
 	$data['encoding'] = 'UTF-8';
@@ -20,7 +20,7 @@ function shochaData($shochaId)
 	//print_r($resp['data']);
 	$response = $resp['data'];
 	
-	preg_match('/http:\/\/www.shockchallenge.com\/[^"]*.jpg/i', $response, $matches);
+	preg_match('/https:\/\/www.shockchallenge.com\/[^"]*.jpg/i', $response, $matches);
 	$data['coverurl'] = $matches[0];
 	
 	$data['director'] = "shockchallenge";
@@ -37,7 +37,7 @@ function shochaData($shochaId)
 	
 	preg_match_all('/<a.*?href=".*?tag\/(.*?)\/.*?rel="tag".*?>(.*?)</i', $response, $matches, PREG_SET_ORDER);
 	foreach($matches as $match) {
-		$cast .= $match[2].'::::url:http://www.shockchallenge.com/models/'.$match[1].".jpg\n";
+		$cast .= $match[2].'::::url:https://www.shockchallenge.com/models/'.$match[1].".jpg\n";
 	}
 	$data['cast'] = $cast;
 	
