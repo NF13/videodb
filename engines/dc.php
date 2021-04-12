@@ -98,6 +98,18 @@ function dcData($videoId)
 		$response = $resp['data'];
 		$cast .= $actor.'::::url:http://www.dungeoncorp.com/models/'.str_replace (' ', '_', strtolower ($actor)).".jpg\n";
 	}
+	preg_match_all('/([\w ]+)<\/span><span class="heading"> - \d+ Image Galler/i', $response, $matches, PREG_SET_ORDER);
+	foreach($matches as $match) {
+		$actor = trim($match[1]);
+		$resp = httpClient($url, $cache);     // added trailing / to avoid redirect
+		if (!$resp['success']) $CLIENTERROR .= $resp['error']."\n";
+		
+		$data['encoding'] = 'UTF-8';
+		
+		//print_r(htmlspecialchars($resp['data']));
+		$response = $resp['data'];
+		$cast .= $actor.'::::url:http://www.dungeoncorp.com/models/'.str_replace (' ', '_', strtolower ($actor)).".jpg\n";
+	}
 	$data['cast'] = $cast;
 	
 	$data['genres'][]='Adult';
