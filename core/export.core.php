@@ -3,7 +3,7 @@
  * Export functions. Returns standardized data for export.
  *
  * @package videoDB
- * @author  Andreas Götz <cpuidle@gmx.de>
+ * @author  Andreas GÃ¶tz <cpuidle@gmx.de>
  * @author  Chinamann <chinamann@users.sourceforge.net>
  * @version $Id: export.core.php,v 1.8 2013/03/15 16:42:46 andig2 Exp $
  */
@@ -47,9 +47,9 @@ function exportData($WHERE)
     // do adultcheck
     if (is_array($result))
     {
-        $result = array_filter($result, create_function('$video', 'return adultcheck($video["id"]);'));
+         $result = array_filter($result, function($video) {return adultcheck($video["id"]);});
     }
-
+               
     // genres
     for($i=0; $i<count($result); $i++)
     {

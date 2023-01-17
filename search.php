@@ -10,7 +10,6 @@
  * @version $Id: search.php,v 2.61 2013/03/16 14:29:47 andig2 Exp $
  */
 
-require_once './core/session.php';
 require_once './core/functions.php';
 require_once './core/queryparser.php';
 require_once './core/output.php';
@@ -18,11 +17,24 @@ require_once './core/output.php';
 // multiuser permission check
 permission_or_die(PERM_READ, PERM_ANY);
 
+/**
+ * input
+ */
+$listcolumns = req_int('listcolumns');
+$genres = req_array('genres');
+$owner = req_string('owner');
+$fields = req_array('fields');
+$isname = req_string('isname'); // isname=Y|1
+$nowild = req_int('nowild');
+$q = req_string('q');
+$ajax_quicksearch = req_int('ajax_quicksearch');
+$ajax_render = req_int('ajax_render');
+$default = req_string('default');
+$export = req_string('export');
+
 // set defaults and update session
 session_default('listcolumns', $config['listcolumns']);
-
 session_set('genres', $genres = isset($genres) ? $genres : array());
-
 // enable redirects to last list view for delete.php
 session_set('listview', 'search.php');
 
@@ -33,7 +45,7 @@ session_set('listview', 'search.php');
  */
 function ajax_render()
 {
-    global $smarty, $result;
+    global $smarty, $result, $config;
 
     // add some delay for debugging
     if ($config['debug'] && $_SERVER['SERVER_ADDR'] == '127.0.0.1')  usleep(rand(200,1000)*1000);
@@ -55,8 +67,7 @@ function ajax_render()
 if ($config['multiuser'])
 {
     // get owner from session- or use current user
-    session_default('owner', get_username(get_current_user_id()));
-
+    session_default_owner();
     $all = $lang['filter_any'];
 }
 
@@ -140,7 +151,7 @@ if (isset($q) &! (isset($default) && empty($q)))
 		foreach ($tokens as $token)
 		{
             // escape search token
-			$token['token'] = addslashes($token['token']);
+			$token['token'] = escapeSQL($token['token']);
 
             // concatenate tokens with token operator
 			$WHERES .= $token['ops'].' (';
@@ -190,7 +201,7 @@ if (isset($q) &! (isset($default) && empty($q)))
         }
 
         // further limit to single owner
-        if ($owner && $owner != $all) $WHERES .= " AND ".TBL_USERS.".name = '".addslashes($owner)."'";
+        if ($owner && $owner != $all) $WHERES .= " AND ".TBL_USERS.".name = '".escapeSQL($owner)."'";
     }
 
     // XML / PDF export
@@ -223,11 +234,11 @@ if (isset($q) &! (isset($default) && empty($q)))
 
     $result = runSQL($select);
 
+    $actors = '';
 /*
 	// prepare actors table if searching for them
 	if (in_array('actors', $fields))
 	{
-		$actors = '';
 		foreach ($result as $row)
 		{
 			$actors .= $row['actors']."\n";
@@ -313,4 +324,3 @@ smarty_display('search.tpl');
 smarty_display('list.tpl');
 smarty_display('footer.tpl');
 
-?>

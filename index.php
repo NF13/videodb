@@ -12,9 +12,28 @@
  * @version $Id: index.php,v 2.102 2013/03/21 16:27:57 andig2 Exp $
  */
 
-require_once './core/session.php';
 require_once './core/functions.php';
 require_once './core/output.php';
+
+/**
+ * input
+ */
+$id = req_int('id');
+$diskid = req_string('diskid');
+// start session'd settings
+$filter = req_string('filter');
+$showtv = req_int('showtv');
+$listcolumns = req_int('listcolumns');
+$mediafilter = req_int('mediafilter');
+$order = req_int('order');
+// end session'd settings
+$owner = req_string('owner');
+$ajax_quicksearch = req_string('ajax_quicksearch'); // elegant template only
+$quicksearch = req_string('quicksearch'); // elegant template only
+$export = req_string('export');
+$pageno = (req_string('pageno') == 'all' ? 'all' : req_int('pageno'));
+$ajax_render = req_int('ajax_render'); // elegant template only
+$deleteid = req_int('deleteid');
 
 /**
  * Update item list asynchronously
@@ -23,7 +42,7 @@ require_once './core/output.php';
  */ 
 function ajax_render()
 {
-    global $smarty, $result, $filter;
+    global $smarty, $result, $filter, $config;
     global $pageno, $totalpages, $totalresults;
 
     // TODO Smarty caching would require further efforts $smarty->caching = 1;
@@ -148,22 +167,23 @@ if(!$ORDER)
 
 if (!$showtv) $WHERES .= ' AND istv = 0';
 
+
 // owner selection for multiuser mode- by default this is the logged in user
 // any user has automatically read permissions for his personal data
 if ($config['multiuser']) 
 {
     // get owner from session- or use current user
-    session_default('owner', get_username(get_current_user_id()));
-    
+    session_default_owner();
     // if we don't have read all permissions, limit visibility using cross-user permissions
     if (!check_permission(PERM_READ))
     {
         $JOINS   = ' LEFT JOIN '.TBL_PERMISSIONS.' ON '.TBL_DATA.'.owner_id = '.TBL_PERMISSIONS.'.to_uid';
         $WHERES .= ' AND '.TBL_PERMISSIONS.'.from_uid = '.get_current_user_id().' AND '.TBL_PERMISSIONS.'.permissions & '.PERM_READ.' != 0';
     }
-        
     // further limit to single owner
-    if ($owner != $lang['filter_any']) $WHERES .= " AND ".TBL_USERS.".name = '".addslashes($owner)."'";
+    if (html_entity_decode($owner) != $lang['filter_any']) {
+        $WHERES .= " AND ".TBL_USERS.".name = '".escapeSQL($owner)."'";
+    }
 }
 
 // searching?
@@ -199,9 +219,9 @@ if ($ajax_quicksearch)
 }
 
 // XML / RSS / PDF export
-if ($export && $config[$export])
+if ($export && array_key_exists($export, $config) && $config[$export])
 {
-	// either (xml|rss|pdf)export
+	// either (xml|rss|pdf|xls)export
     $func = $export.'export';
     if ($export == 'rss') $export = 'xml';
     require_once './core/'.$export.'.php';
@@ -297,7 +317,7 @@ $smarty->assign('moreless', true);           // show more/less control in list v
 // allow data export
 foreach (array('xls','pdf','xml','rss') as $export)
 {
-    if ($config[$export]) $smarty->assign($export, 'index.php?');
+    if (array_key_exists($export, $config) && $config[$export]) $smarty->assign($export, 'index.php?');
 }
 
 // display templates
@@ -313,9 +333,8 @@ smarty_display('list.tpl', get_current_user_id().'|'.$WHERES);
 smarty_display('footer.tpl');
 
 // caching enabled?
-if ($config['httpcaching'])
+if ($config['http_caching'])
 {
     httpCacheOutput('index', httpCacheCaptureEnd());
 }
 
-?>

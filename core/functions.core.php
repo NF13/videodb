@@ -30,13 +30,14 @@ if (!function_exists('errorpage')) {
 function dump($var, $ret = false, $plain = false)
 {
     global $argv;
+    if (isset($argv) && is_array($argv) && count($argv) > 0) $plain = true;
 
     if (is_array($var) || is_object($var))
         $var = print_r($var, 1);
     else if (is_bool($var))
     	$var = ($var) ? 'TRUE' : 'FALSE';
 
-    $var .= (count($argv) > 0 || $plain) ? "\n" : "<br/>\n";
+    $var .= (is_array($argv)&&count($argv) > 0 || $plain) ? "\n" : "<br/>\n";
 
     if ($ret) return $var;
     echo $var;
@@ -68,37 +69,13 @@ function dlog($var)
 }
 
 /**
- * Used to remove magic quotes from the $_GET, $_POST, $_COOKIE and
- * $_SESSION super global arrays. It's automatically called in
- * functions.php
- *
- * @param array &$array Reference to an array
- */
-function remove_magic_quotes(&$array)
-{
-	foreach (array_keys($array) as $key)
-	{
-		if (is_array($array[$key])) {
-			remove_magic_quotes($array[$key]);
-		} else {
-			$array[$key] = stripslashes($array[$key]);
-		}
-	}
-}
-
-/**
- * magicquote safe formoutputter
- *
- * Strips slashes when magic_quotes_gpc is set.
+ * safe formoutputter
  *
  * @param  string $name     The input string
  * @return string           The cleaned string
  */
 function formvar($name)
 {
-	if (get_magic_quotes_gpc()) {
-		$name = stripslashes($name);
-	}
 	return htmlspecialchars($name);
 }
 
@@ -116,7 +93,7 @@ function getmicrotime()
 /**
  * Return mysqli db connection object
  *
- * @return resource database handle
+ * @return mysqli database handle
  */
 function getConnection()
 {
@@ -131,7 +108,7 @@ function getConnection()
     if (DB_CHARSET)
     {
         if (mysqli_set_charset($dbh, DB_CHARSET) === false)
-             errorpage('DB Link Error', 'Couldn\'t set encoding to '.DB_ENCODING);
+             errorpage('DB Link Error', 'Couldn\'t set encoding to '.DB_CHARSET);
     }
 
     return($dbh);

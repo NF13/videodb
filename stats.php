@@ -48,11 +48,16 @@ function collapse_multiple_languages($langs)
     return $templangs;
 }
 
+/**
+ * input
+ */
+$owner = req_string('owner');
+$WHERES = null; // init
+
 if ($config['multiuser']) 
 {
     // get owner from session- or use current user
-    session_default('owner', get_username(get_current_user_id()));
-
+    session_default_owner();
     // build html select box
     $all = strtoupper($lang['radio_all']);
     $smarty->assign('owners', out_owners(array($lang['filter_any'] => $lang['filter_any']), PERM_READ));
@@ -163,4 +168,3 @@ $smarty->assign('stats', $stats);
 // display templates
 tpl_display('stats.tpl');
 
-?>

@@ -332,7 +332,7 @@ foreach ($rows as $row) {
         } else {
             echo "<b>MOVED</b> -  <a href='../show.php?id={$id}'>{$fileName}</a><br>";
             if ($update_moved) {
-                $UPDATE = "UPDATE " . TBL_DATA . " SET filename='" . addslashes($moviesFS[$fileName]) . "' WHERE id='{$id}'";
+                $UPDATE = "UPDATE " . TBL_DATA . " SET filename='" . escapeSQL($moviesFS[$fileName]) . "' WHERE id='{$id}'";
                 runSQL($UPDATE);
             }
         }
@@ -373,14 +373,14 @@ foreach ($moviesFS as $movie) {
     $title = str_replace('_', ' ', $title);
 
     $filePath = $moviesFS[end($filePathParts)];
-    $fileSize = getFileSize($filePath);
+    $fileSize = (int) getFileSize($filePath);
     $fileDate = getFileTimeLinux($filePath);
 
     $metadata = getMetadata($filePath);
     $audioCodec = $metadata['audioCodec'];
     $videoCodec = $metadata['videoCodec'];
-    $videoWidth = $metadata['videoWidth'];
-    $videoHeight = $metadata['videoHeight'];
+    $videoWidth = (int) $metadata['videoWidth'];
+    $videoHeight = (int) $metadata['videoHeight'];
 
     echo "<tr>
               <td>$filePath</td>
@@ -393,7 +393,7 @@ foreach ($moviesFS as $movie) {
               <td>$fileDate</td>
           </tr>";
 
-    $UPDATE = "INSERT " . TBL_DATA . " SET filename='" . addslashes($filePath) . "',
+    $UPDATE = "INSERT " . TBL_DATA . " SET filename='" . escapeSQL($filePath) . "',
         mediatype = 51,
         title = '$title',
         filesize = $fileSize,
@@ -413,7 +413,7 @@ $rows = runSQL($SELECT);
 
 echo '<br><br><h3><New movies added (click to edit):</h3>';
 foreach ($rows as $row) {
-    echo "<a href='../edit.php?id={$row['id']}'>{$row[title]}</a><br>";
+    echo "<a href='../edit.php?id={$row['id']}'>{$row['title']}</a><br>";
 }
 
 ?>

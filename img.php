@@ -12,6 +12,13 @@
 require_once './core/functions.php';
 require_once './core/httpclient.php';
 
+/**
+ * input
+ */
+$name = req_string('name');
+$actorid = req_string('actorid');
+$url = req_url('url');
+
 /* 
  * Note:
  *
@@ -28,6 +35,8 @@ session_write_close();
  */
 function checkAmazonSmallImage($url, $ext, $file)
 {
+   global $config;    
+    
 	if (preg_match('/^(.+)L(Z{7,}.+)$/', $url, $m)) 
     {
 		if (list($width, $height, $type, $attr) = getimagesize($file)) {
@@ -53,8 +62,23 @@ if ($name)
 
     // name given
 	$name   = html_entity_decode($name);
+ 
+        if ( $config['debug'] )
+        {
+            // save data to pass to functions.php - erropage 
+            // if engineActor fails in httpclient it goes directly to errorpage which loses
+            // message set in httpCLient
+            // this is a cause of broken actor images appearing
+            $save_data_if_error_getting_image =  'Name: '.$name.' - Actorid: '.$actorid;
+        }
+        
 	$result = engineActor($name, $actorid, engineGetActorEngine($actorid));
 
+        if ( $config['debug}'] )
+        {
+            unset($save_data_if_error_getting_image);
+        }
+	
 	if (!empty($result)) {
 		$url = $result[0][1];
 	}
@@ -68,7 +92,7 @@ if ($name)
     {
         // write only if HTTP lookup physically successful
         $SQL = 'REPLACE '.TBL_ACTORS." (name, imgurl, actorid, checked)
-                 VALUES ('".addslashes($name)."', '".addslashes($url)."', '".addslashes($actorid)."', NOW())";
+                 VALUES ('".escapeSQL($name)."', '".escapeSQL($url)."', '".escapeSQL($actorid)."', NOW())";
         runSQL($SQL);
     }
 }
@@ -103,4 +127,3 @@ $file = preg_replace('/img\.php$/', $file, $_SERVER['PHP_SELF']);
 
 header('Location: '.$file);
 
-?>

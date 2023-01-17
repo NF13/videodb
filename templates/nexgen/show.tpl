@@ -29,6 +29,7 @@ function boxeePlay(id) {
 			<ul class="button-group">
 				<li><a class="button small {if !$video.copyable}disabled{/if}" href="edit.php?copyid={$video.id}&amp;save=1">{$lang.copy}</a></li>
 				<li><a class="button small {if !$video.editable}disabled{/if}" href="borrow.php?id={$video.id}&amp;diskid={$video.diskid}">{$lang.borrow}</a></li>
+				{if !$video.seen}<li><a class="button small seen" href="show.php?id={$video.id}&amp;seen=1">{$lang.seen|lower}</a></li>{/if}
 			</ul><!-- button-group -->
 			<ul class="button-group">
 				<li><a class="button small {if !$video.copyable}disabled{/if}" href="edit.php?id={$video.id}">{$lang.edit}</a></li>
@@ -284,10 +285,17 @@ function boxeePlay(id) {
 		{/if}
 
 
-		{if $video.cast|@count}
+		{if $video.cast|@count || $cast_toggle}
 		<h4 class="subheader">{$lang.cast}</h4>
-
 		<div class="row">
+			{if $cast_toggle}
+				{if $show_cast}
+			<a href="show.php?id={$video.id}" class="button submit">{$lang.hidecast}</a>
+				{else}
+			<a href="show.php?id={$video.id}&amp;show_cast=1" class="button submit">{$lang.showcast}</a>
+				{/if}
+			{/if}
+			{if $show_cast}
 			<div class="small-12 columns">
 				<ul class="small-block-grid-1 large-block-grid-4">
 					{foreach $video.cast as $actor name=col}
@@ -312,6 +320,7 @@ function boxeePlay(id) {
 					{/foreach}
 				</ul><!-- row -->
 			</div><!-- col -->
+			{/if}
 		</div><!-- row -->
 		{/if}
 

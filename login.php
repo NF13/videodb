@@ -9,7 +9,6 @@
  * @version $Id: login.php,v 2.27 2010/04/04 10:34:21 andig2 Exp $
  */
 
-require_once './core/session.php';
 require_once './core/functions.php';
 
 /**
@@ -28,6 +27,13 @@ function clear_session()
     setcookie('VDBusername', '', time()-7200, $subdir);
     setcookie('VDBpassword', '', time()-7200, $subdir);
 }
+
+/**
+ * input
+ */
+$username = req_string('username');
+$password = req_string('password');
+$refer = req_string('refer');
 
 // make sure caches are clean
 clear_permission_cache();
@@ -87,4 +93,3 @@ else
     tpl_display('login.tpl');
 }
 
-?>
