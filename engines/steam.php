@@ -3,37 +3,43 @@
 $GLOBALS['steamIdPrefix'] = 'steam:';
 
 
-function steamSearch($title, $aka=null)
+function steamSearch($title, $aka = null)
 {
     global $steamIdPrefix;
     global $CLIENTERROR;
     global $cache;
 
-    $url = 'https://api.steampowered.com/ISteamApps/GetAppList/v2/';
+    // Steam Store Search API (keine API-Key nötig)
+    $url = 'https://store.steampowered.com/api/storesearch/?term=' . urlencode($title) . '&l=german&cc=DE';
 
     $resp = httpClient($url, $cache);
-    if (!$resp['success']) $CLIENTERROR .= $resp['error']."\n";
+    if (!$resp['success']) {
+        $CLIENTERROR .= $resp['error'] . "\n";
+        return array();
+    }
+
+    $json = json_decode($resp['data'], true);
+    if (!$json || !isset($json['items'])) {
+        $CLIENTERROR .= "Steam-Suche lieferte keine gültigen Daten\n";
+        return array();
+    }
 
     $data = array();
-
-    // add encoding
     $data['encoding'] = $resp['encoding'];
 
-    // multiple matches
-    if (preg_match_all('/"appid":\d+,"name":"[^"]*'.str_replace (' ', '[^"]*', $title).'[^"]*"/i', $resp['data'], $multi, PREG_SET_ORDER))
-    {
-        foreach ($multi as $row)
-        {
-            preg_match('/"appid":(\d+),"name":"([^"]*'.str_replace (' ', '[^"]*', $title).'[^"]*)"/i', $row[0], $ary);
-            if ($ary[1] and $ary[2]) {
-                $info           = array();
-                $info['id']     = $steamIdPrefix.$ary[1];
-                $info['title']  = $ary[2];
-                $data[]         = $info;
-            }
-			$data = multidimsort($data, 'title');
-#           dump($info);
-        }
+    foreach ($json['items'] as $item) {
+        if (!isset($item['id']) || !isset($item['name'])) continue;
+
+        $info = array();
+        $info['id']    = $steamIdPrefix . $item['id'];
+        $info['title'] = $item['name'];
+
+        $data[] = $info;
+    }
+
+    // Sortieren nach Titel
+    if (count($data) > 1) {
+        $data = multidimsort($data, 'title');
     }
 
     return $data;
@@ -78,9 +84,7 @@ function steamData($steamId)
 	$data['encoding'] = 'UTF-8';
 	$data['year'] = substr($jsonObject->{$steamId}->{'data'}->{'release_date'}->{'date'},-4);
 	$data['title'] = $jsonObject->{$steamId}->{'data'}->{'name'};
-	$coverurl = $jsonObject->{$steamId}->{'data'}->{'header_image'};
-	$coverurl = substr($coverurl,0, strrpos($coverurl, '?'));
-	$data['coverurl'] = $coverurl;
+	$data['coverurl'] = 'https://cdn.cloudflare.steamstatic.com/steam/apps/'.$steamId.'/library_600x900.jpg';
 	$data['director'] =$jsonObject->{$steamId}->{'data'}->{'publishers'}[0];
 	$data['rating']=$jsonObject->{$steamId}->{'data'}->{'metacritic'}->{'score'}/10;
 	foreach($jsonObject->{$steamId}->{'data'}->{'genres'} as $genre) {
